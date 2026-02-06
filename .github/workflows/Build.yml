@@ -1,0 +1,42 @@
+name: Build Hysteria2 for macOS 10.15
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          repository: apernet/hysteria
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.24'
+          cache: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Build with Hyperbole
+        env:
+          CGO_ENABLED: 0
+          MACOSX_DEPLOYMENT_TARGET: "10.15"
+          HY_APP_PLATFORMS: "darwin/amd64"
+        run: |
+          python3 hyperbole.py build -r
+          vtool -set-build-version macos 10.15 10.15 -replace -output build/hysteria-darwin-amd64 build/hysteria-darwin-amd64
+          HY_VERSION=$(python3 -c "from hyperbole import get_app_version; print(get_app_version())")
+          echo "DETECTED_VERSION=$HY_VERSION" >> $GITHUB_ENV
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hysteria-${{ env.DETECTED_VERSION }}-macOS-10.15
+          path: build/hysteria-darwin-amd64
